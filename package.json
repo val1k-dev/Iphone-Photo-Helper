@@ -1,0 +1,45 @@
+{
+  "name": "iphone-photo-helper",
+  "version": "1.0.0",
+  "description": "iPhone Photo Helper - Copy photos from iPhone to PC",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "dev",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.val1k.iphone-photo-helper",
+    "productName": "iPhone Photo Helper",
+    "win": {
+      "target": "nsis",
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "warningsAsErrors": false,
+      "oneClick": true
+    },
+    "directories": {
+      "buildResources": "build"
+    },
+    "artifactName": "setup.${ext}",
+    "asar": true,
+    "files": [
+      "**/*"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/val1k.dev/iphone-photo-helper.git"
+  },
+  "author": "val1k.dev",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/val1k.dev/iphone-photo-helper/issues"
+  },
+  "homepage": "https://github.com/val1k.dev/iphone-photo-helper#readme",
+  "devDependencies": {
+    "electron": "^39.2.4",
+    "electron-builder": "^26.0.12"
+  }
+}

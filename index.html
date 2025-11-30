@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
+    />
+    <title>iPhone Photo Helper</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-wrapper">
+      <div class="window-controls">
+        <button
+          class="window-btn minimize"
+          onclick="minimizeWindow()"
+          title="Minimize"
+        >
+          ─
+        </button>
+        <button class="window-btn close" onclick="closeWindow()" title="Close">
+          ✕
+        </button>
+      </div>
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-avatar">📱</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-role">IPHONE PHOTO MANAGER</div>
+          </div>
+        </div>
+
+        <nav class="sidebar-section">
+          <div class="sidebar-section-title">MAIN</div>
+          <div class="sidebar-menu-item active" data-section="windows">
+            <div class="sidebar-menu-icon">🖥️</div>
+            <span data-i18n="step1_title">Select Windows</span>
+          </div>
+
+          <div class="sidebar-menu-item" data-section="folders">
+            <div class="sidebar-menu-icon">📁</div>
+            <span data-i18n="step2_title">Choose Folder</span>
+          </div>
+
+          <div class="sidebar-menu-item" data-section="progress">
+            <div class="sidebar-menu-icon">⚡</div>
+            <span data-i18n="step3_title">Copy Progress</span>
+          </div>
+        </nav>
+
+        <div class="lang-switcher">
+          <button
+            class="lang-btn"
+            data-lang="en"
+            onclick="switchLanguage('en')"
+          >
+            EN
+          </button>
+          <button
+            class="lang-btn"
+            data-lang="ru"
+            onclick="switchLanguage('ru')"
+          >
+            RU
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="container">
+          <div class="card" data-section-content="windows">
+            <h2 class="card-title">
+              <span>🖥️</span
+              ><span data-i18n="step1_title">Step 1: Select Windows</span>
+            </h2>
+            <p class="card-subtitle" data-i18n="step1_desc">
+              Open two File Explorer windows: Source (iPhone) and Destination
+            </p>
+            <div class="btn-group">
+              <button class="btn" onclick="refreshExplorerWindows()">
+                <span data-i18n="btn_refresh">Refresh</span>
+              </button>
+            </div>
+            <div id="explorer-windows" class="window-list"></div>
+            <div class="btn-group">
+              <button
+                class="btn btn-secondary"
+                onclick="listSourceFolders()"
+                id="btn-show-folders"
+                disabled
+              >
+                <span data-i18n="btn_show_folders">Show</span>
+              </button>
+            </div>
+          </div>
+          <div class="card" data-section-content="folders">
+            <h2 class="card-title">
+              <span>📁</span
+              ><span data-i18n="step2_title">Step 2: Choose Folder</span>
+            </h2>
+            <p class="card-subtitle" data-i18n="step2_desc">
+              Select which folder to copy from Source to Destination
+            </p>
+            <div id="folder-list"></div>
+          </div>
+
+          <div class="card" data-section-content="progress">
+            <h2 class="card-title">
+              <span>⚡</span
+              ><span data-i18n="step3_title">Step 3: Progress</span>
+            </h2>
+            <div id="copy-output"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
