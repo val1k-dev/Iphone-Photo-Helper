@@ -27,7 +27,7 @@
         <div class="sidebar-header">
           <div class="sidebar-avatar">📱</div>
           <div class="sidebar-user-info">
-            <div class="sidebar-user-role">IPHONE PHOTO MANAGER</div>
+            <div class="sidebar-user-role">IPHONE PHOTO MANAGER v1.1</div>
           </div>
         </div>
 
@@ -46,6 +46,11 @@
           <div class="sidebar-menu-item" data-section="progress">
             <div class="sidebar-menu-icon">⚡</div>
             <span data-i18n="step3_title">Copy Progress</span>
+          </div>
+
+          <div class="sidebar-menu-item" data-section="compare">
+            <div class="sidebar-menu-icon">🔍</div>
+            <span data-i18n="step4_title">Compare & Sync</span>
           </div>
         </nav>
 
@@ -108,9 +113,37 @@
           <div class="card" data-section-content="progress">
             <h2 class="card-title">
               <span>⚡</span
-              ><span data-i18n="step3_title">Step 3: Progress</span>
+              ><span data-i18n="step3_title">Step 3: Copy Progress</span>
             </h2>
             <div id="copy-output"></div>
+          </div>
+
+          <div class="card" data-section-content="compare">
+            <h2 class="card-title">
+              <span>🔍</span
+              ><span data-i18n="step4_title">Step 4: Compare & Sync</span>
+            </h2>
+            <p class="card-subtitle" data-i18n="step4_desc">
+              Select source and destination windows, then choose a folder to compare and copy only missing files
+            </p>
+            <div class="btn-group">
+              <button class="btn" onclick="refreshCompareWindows()">
+                <span data-i18n="btn_refresh">🔄 Refresh Windows</span>
+              </button>
+            </div>
+            <div id="compare-windows" class="window-list"></div>
+            <div class="btn-group" style="margin-top: 24px">
+              <button
+                class="btn btn-secondary"
+                onclick="listCompareFolders()"
+                id="btn-show-compare-folders"
+                disabled
+              >
+                <span data-i18n="btn_show_folders">📂 Show Folders</span>
+              </button>
+            </div>
+            <div id="compare-folder-list"></div>
+            <div id="compare-output"></div>
           </div>
         </div>
       </main>

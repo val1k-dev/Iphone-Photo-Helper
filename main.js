@@ -217,3 +217,59 @@ ipcMain.handle('copy-folder-files-serial', async (event, srcHwnd, folderName, ds
 	})
 })
 
+// IPC: Compare files and copy only missing ones
+ipcMain.handle('compare-and-copy-missing', async (event, srcHwnd, folderName, dstHwnd) => {
+	const safeName = String(folderName || '').replace(/'/g, "''")
+	const ps = `$srcHwnd = ${Number(srcHwnd)}; $dstHwnd = ${Number(dstHwnd)}; $folderName = '${safeName}'; $ErrorActionPreference='SilentlyContinue'; $shell = New-Object -ComObject Shell.Application; $wins = $shell.Windows(); $src = $null; $dst = $null; foreach ($w in $wins) { if ($w.HWND -eq $srcHwnd) { $src = $w } elseif ($w.HWND -eq $dstHwnd) { $dst = $w } }; if ($null -eq $src) { [pscustomobject]@{ Ok=$false; Error='Source window not found' } | ConvertTo-Json -Compress; exit }; if ($null -eq $dst) { [pscustomobject]@{ Ok=$false; Error='Destination window not found' } | ConvertTo-Json -Compress; exit }; $srcFolder = $src.Document.Folder; $items = $srcFolder.Items(); $targetFolderItem = $null; foreach ($i in $items) { if ($i.IsFolder -and ($i.Name.Trim() -ieq $folderName)) { $targetFolderItem = $i; break } }; if ($null -eq $targetFolderItem) { [pscustomobject]@{ Ok=$false; Error='Folder not found in source' } | ConvertTo-Json -Compress; exit }; $subFolder = $targetFolderItem.GetFolder; if ($null -eq $subFolder) { [pscustomobject]@{ Ok=$false; Error='Cannot access folder contents' } | ConvertTo-Json -Compress; exit }; $subItems = $subFolder.Items(); if ($null -eq $subItems) { [pscustomobject]@{ Ok=$false; Error='Cannot enumerate folder items' } | ConvertTo-Json -Compress; exit }; $dstFolder = $dst.Document.Folder; $dstPath = $dstFolder.Self.Path; if (-not $dstPath -or $dstPath.Length -eq 0) { [pscustomobject]@{ Ok=$false; Error='Destination path is not a filesystem path' } | ConvertTo-Json -Compress; exit }; $targetDstPath = Join-Path -Path $dstPath -ChildPath $folderName; if (-not (Test-Path -LiteralPath $targetDstPath)) { try { New-Item -Path $targetDstPath -ItemType Directory -Force | Out-Null } catch { [pscustomobject]@{ Ok=$false; Error="Cannot create destination folder: $($_.Exception.Message)" } | ConvertTo-Json -Compress; exit } }; $existingFiles = @{}; if (Test-Path -LiteralPath $targetDstPath) { Get-ChildItem -LiteralPath $targetDstPath -File -ErrorAction SilentlyContinue | ForEach-Object { $existingFiles[$_.Name] = $true } }; $srcFilesArray = @(); $totalSrc = 0; foreach ($i in $subItems) { if (-not $i.IsFolder) { $totalSrc += 1; $srcFilesArray += $i } }; Write-Host "COMPARE_COUNT:$($totalSrc)"; $compared = 0; $missingFiles = @(); foreach ($i in $srcFilesArray) { $name = $i.Name; $compared += 1; Write-Host "COMPARE_PROGRESS:$($compared):$($name)"; if (-not $name) { continue }; if (-not $existingFiles.ContainsKey($name)) { $missingFiles += $i } }; $missing = $missingFiles.Count; Write-Host "COMPARE_DONE:$($missing)"; if ($missing -eq 0) { [pscustomobject]@{ Ok=$true; Copied=0; Skipped=$totalSrc; Missing=0; Errors=@(); Src=$folderName; Dst=$targetDstPath } | ConvertTo-Json -Compress -Depth 6; exit }; $nsDst = $shell.NameSpace($targetDstPath); if ($null -eq $nsDst) { [pscustomobject]@{ Ok=$false; Error='Failed to open destination namespace' } | ConvertTo-Json -Compress; exit }; $copied = 0; $errors = @(); foreach ($i in $missingFiles) { $name = $i.Name; $size = $i.ExtendedProperty('System.Size'); if ($null -eq $size) { $size = 0 }; Write-Host "COPY_PROGRESS:$($copied):$($name)"; try { $nsDst.CopyHere($i, 16) } catch { $errors += "Copy failed: $name - $($_.Exception.Message)"; continue }; $target = Join-Path -Path $targetDstPath -ChildPath $name; $maxWaitMs = 600000; $sleepMs = 1000; $elapsed = 0; $appeared = $false; while ($elapsed -lt $maxWaitMs) { try { if (Test-Path -LiteralPath $target) { $appeared = $true; $fi = Get-Item -LiteralPath $target -ErrorAction SilentlyContinue; if ($fi -and $fi.Length -gt 0) { if ($size -gt 0) { if ([int64]$fi.Length -ge [int64]$size) { break } } else { if ($fi.Length -gt 0) { break } } } } } catch { }; Start-Sleep -Milliseconds $sleepMs; $elapsed += $sleepMs }; if ($appeared) { $copied += 1 } else { $errors += "Timeout waiting copy: $name" } }; [pscustomobject]@{ Ok=$true; Copied=$copied; Skipped=($totalSrc - $missing); Missing=$missing; Errors=$errors; Src=$folderName; Dst=$targetDstPath } | ConvertTo-Json -Compress -Depth 6`
+	return new Promise(resolve => {
+		const child = exec(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${ps}"`)
+		let output = ''
+		child.stdout.on('data', chunk => {
+			output += chunk
+			const lines = chunk.toString().split('\n')
+			for (const line of lines) {
+				if (line.startsWith('COMPARE_COUNT:')) {
+					const totalFiles = parseInt(line.substring(14))
+					event.sender.send('compare-progress', { phase: 'compare', total: totalFiles, current: 0, fileName: '' })
+				} else if (line.startsWith('COMPARE_PROGRESS:')) {
+					const parts = line.substring(17).split(':')
+					if (parts.length >= 2) {
+						const current = parseInt(parts[0])
+						const fileName = parts.slice(1).join(':')
+						event.sender.send('compare-progress', { phase: 'compare', current, fileName })
+					}
+				} else if (line.startsWith('COMPARE_DONE:')) {
+					const missingCount = parseInt(line.substring(13))
+					event.sender.send('compare-progress', { phase: 'compare-done', missing: missingCount })
+				} else if (line.startsWith('COPY_PROGRESS:')) {
+					const parts = line.substring(14).split(':')
+					if (parts.length >= 2) {
+						const copied = parseInt(parts[0])
+						const fileName = parts.slice(1).join(':')
+						event.sender.send('compare-progress', { phase: 'copy', copied, fileName })
+					}
+				}
+			}
+		})
+		child.on('close', (code) => {
+			try {
+				const lines = output.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('COMPARE_') && !l.startsWith('COPY_'))
+				const jsonLine = lines.find(l => l.startsWith('{'))
+				if (!jsonLine) {
+					resolve({ Ok: false, Error: 'No JSON output' })
+					return
+				}
+				const data = JSON.parse(jsonLine)
+				resolve(data)
+			} catch (e) {
+				console.error('Parse compare JSON failed:', e.message, 'stdout:', output)
+				resolve({ Ok: false, Error: e.message })
+			}
+		})
+		child.on('error', (error) => {
+			console.error('Compare and copy failed:', error.message)
+			resolve({ Ok: false, Error: error.message })
+		})
+	})
+})
+
